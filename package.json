@@ -8,12 +8,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/malikkamranabid/npm-rabbitmq.git"
+    "url": "git+https://github.com/FunNode/npm-rabbitmq.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/malikkamranabid/npm-rabbitmq/issues"
+    "url": "https://github.com/FunNode/npm-rabbitmq.git"
   },
-  "homepage": "https://github.com/malikkamranabid/npm-rabbitmq#readme"
+  "homepage": "https://github.com/FunNode/npm-rabbitmq.git#readme"
 }
