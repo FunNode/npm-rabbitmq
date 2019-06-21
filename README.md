@@ -1,5 +1,6 @@
 # npm-rabbitmq
 
-#  use following steps to update package
-#  update version number in package.json
-#  execute command npm publish
+Use the following steps to update and publish the package (https://www.npmjs.com/package/@funnode/rabbitmq)
+
+1. update version number in package.json
+2. execute command `npm publish`
