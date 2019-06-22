@@ -1,6 +1,6 @@
 {
-  "name": "@funnode/npm-rabbitmq",
-  "version": "1.0.1",
+  "name": "@funnode/rabbitmq",
+  "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
