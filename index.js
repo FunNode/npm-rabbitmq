@@ -6,8 +6,8 @@ module.exports = Rabbitmq;
 
 if (!global.R5) {
   global.R5 = {
-    out: new (require(`./Output.js`))('rabbitmq')
-  };
+    out: console
+  }
 }
 
 let config = {
@@ -65,7 +65,7 @@ Rabbitmq.prototype.connect = function (type, retry_after_time = 5, callback = fu
       }
     });
     _this.conn.on('close', function () {
-      R5.out.err(`[AMQP] reconnecting on close in ${retry_after_time} seconds`);
+      R5.out.error(`[AMQP] reconnecting on close in ${retry_after_time} seconds`);
       retry_after_time = retry_after_time + 5;
       setTimeout(function () {
         _this.connect(type, retry_after_time);
@@ -125,7 +125,7 @@ function parse_json (str) {
                      This message was sent from rabbitmq.js. Error Message: <br>
                      <pre>${initial_error.stack}</pre>`
           };
-          R5.out.err(`${msg.text}`);
+          R5.out.error(`${msg.text}`);
           counter = max;
       }
     }
