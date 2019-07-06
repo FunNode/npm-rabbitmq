@@ -6,31 +6,27 @@ module.exports = Rabbitmq;
 
 if (!global.R5) {
   global.R5 = {
-    out: new (require(`./Output.js`))('rabbitmq')
+    out: console
   };
 }
 
-let config = {
-  channel: process.env.NODE_ENV,
-  host: process.env.RABBITMQ_HOST,
-  user: process.env.RABBITMQ_USER,
-  pass: process.env.RABBITMQ_PASS
-};
-
 // Constructors
 
-function Rabbitmq (configuration, type, callback) {
-  this.config = configuration;
-  this.connect(type, 5, callback);
+function Rabbitmq (host, user, pass, vhost = 'development') {
+  this.host = host;
+  this.user = user;
+  this.pass = pass;
+  this.vhost = vhost;
 }
 
 // Public Methods
 
-Rabbitmq.prototype.connect = function (type, retry_after_time = 5, callback = function () { }) {
+Rabbitmq.prototype.connect = function (config, type, retry_after_time = 5, callback = function () { }) {
   let _this = this;
+  this.config = config;
 
   _this.amqp = require('amqplib/callback_api');
-  _this.amqp.connect(`amqp://${config.user}:${config.pass}@${config.host}/${config.channel}`, function (err, conn) {
+  _this.amqp.connect(`amqp://${_this.user}:${_this.pass}@${_this.host}/${_this.vhost}`, function (err, conn) {
     if (err) { throw new Error(err.message); }
     _this.conn = conn;
     _this.conn.createChannel(function (err, ch) {
@@ -38,17 +34,17 @@ Rabbitmq.prototype.connect = function (type, retry_after_time = 5, callback = fu
       retry_after_time = 5;
       if (type === 'send') {
         _this.ch = ch;
-        _this.ch.assertExchange(_this.config.exchange_name, 'topic', { durable: false });
-        R5.out.log(`Connected to RabbitMQ (queue: ${_this.config.queue_name})`);
+        _this.ch.assertExchange(config.exchange_name, 'topic', { durable: false });
+        R5.out.log(`Connected to RabbitMQ (queue: ${config.queue_name})`);
         return callback();
       }
       else if (type === 'receive') {
-        ch.assertExchange(_this.config.exchange_name, 'topic', { durable: false });
-        ch.assertQueue(_this.config.queue_name, {}, function (err, q) {
+        ch.assertExchange(config.exchange_name, 'topic', { durable: false });
+        ch.assertQueue(config.queue_name, {}, function (err, q) {
           if (err) { throw new Error(err.message); }
 
-          R5.out.log(`[*] Waiting for messages from ${_this.config.message_type}. To exit press CTRL+C`);
-          ch.bindQueue(q.queue, _this.config.exchange_name, _this.config.message_type);
+          R5.out.log(`[*] Waiting for messages from ${config.message_type}. To exit press CTRL+C`);
+          ch.bindQueue(q.queue, config.exchange_name, config.message_type);
           ch.consume(q.queue, function (msg) {
             let obj = parse_json(msg.content.toString());
             if (obj === null) {
