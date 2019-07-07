@@ -1,7 +1,7 @@
 {
   "name": "@funnode/rabbitmq",
-  "version": "1.2.0",
-  "description": "",
+  "version": "1.3.0",
+  "description": "A rabbitmq wrapper used by funnode repositories",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -10,10 +10,18 @@
     "type": "git",
     "url": "git+https://github.com/FunNode/npm-rabbitmq.git"
   },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/FunNode/npm-rabbitmq.git"
+  "author": {
+    "name": "Ravi Patel",
+    "email": "ravi@funnode.com",
+    "url": "https://github.com/RaviPatel"
   },
-  "homepage": "https://github.com/FunNode/npm-rabbitmq.git#readme"
+  "contributors": [
+    { "name": "Malik Kamran Abid", "url": "https://github.com/orgs/FunNode/people/malikkamranabid" }
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "amqplib": "0.5.1",
+    "chai": "^4.2.0",
+    "mocha": "^6.1.4"
+  }
 }
