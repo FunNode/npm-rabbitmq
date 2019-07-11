@@ -21,7 +21,7 @@ function Rabbitmq (host, user, pass, vhost = 'development') {
 
 // Public Methods
 
-Rabbitmq.prototype.connect = function (config, type, retry_after_time = 5, callback = function () { }) {
+Rabbitmq.prototype.connect = function (config, retry_after_time = 5, callback = function () { }) {
   let _this = this;
   this.config = config;
 
@@ -29,55 +29,56 @@ Rabbitmq.prototype.connect = function (config, type, retry_after_time = 5, callb
   _this.amqp.connect(`amqp://${_this.user}:${_this.pass}@${_this.host}/${_this.vhost}`, function (err, conn) {
     if (err) { throw new Error(err.message); }
     _this.conn = conn;
+
     _this.conn.createChannel(function (err, ch) {
       if (err) { throw new Error(err.message); }
       retry_after_time = 5;
-      if (type === 'send') {
-        _this.ch = ch;
-        _this.ch.assertExchange(config.exchange_name, 'topic', { durable: false });
-        R5.out.log(`Connected to RabbitMQ (queue: ${config.queue_name})`);
-        return callback();
-      }
-      else if (type === 'receive') {
-        ch.assertExchange(config.exchange_name, 'topic', { durable: false });
-        ch.assertQueue(config.queue_name, {}, function (err, q) {
-          if (err) { throw new Error(err.message); }
 
-          R5.out.log(`[*] Waiting for messages from ${config.message_type}. To exit press CTRL+C`);
-          ch.bindQueue(q.queue, config.exchange_name, config.message_type);
-          ch.consume(q.queue, function (msg) {
-            let obj = parse_json(msg.content.toString());
-            if (obj === null) {
-              ch.ack(msg);
-              return;
-            }
-            callback(obj);
-            ch.ack(msg);
-          }, { noAck: false });
-        });
-      }
-      else {
-        throw new Error(`Provided type '${type}' is invalid`);
-      }
+      _this.ch = ch;
+      _this.ch.assertExchange(config.exchange_name, 'topic', { durable: false });
+      R5.out.log(`Connected to RabbitMQ (queue: ${config.queue_name})`);
+      return callback();
     });
 
     _this.conn.on('close', function () {
       R5.out.error(`[AMQP] reconnecting on close in ${retry_after_time} seconds`);
       retry_after_time = retry_after_time + 5;
       setTimeout(function () {
-        _this.connect(type, retry_after_time);
+        _this.connect(_this.config, retry_after_time);
       }, (retry_after_time - 5) * 1000);
     });
   });
 }
 
-Rabbitmq.prototype.queue_message = function (message_object, pause_time = 0, callback = function () {}) {
+Rabbitmq.prototype.bind = function (callback = function () {}) {
+  let _this = this;
+
+  _this.ch.assertQueue(_this.config.queue_name, {}, function (err, q) {
+    if (err) { throw new Error(err.message); }
+
+    R5.out.log(`[*] Waiting for messages from ${_this.config.message_type}. To exit press CTRL+C`);
+    _this.ch.bindQueue(q.queue, _this.config.exchange_name, _this.config.message_type);
+    _this.ch.consume(q.queue, function (msg) {
+      let obj = parse_json(msg.content.toString());
+      if (obj === null) {
+        _this.ch.ack(msg);
+        return;
+      }
+      callback(obj);
+      _this.ch.ack(msg);
+    }, { noAck: false });
+  });
+};
+
+Rabbitmq.prototype.send = function (message_object, pause_time = 0, callback = function () {}) {
   let message_string = get_message_from_obj(message_object);
-  setTimeout(function (_this) {
+  let _this = this;
+
+  setTimeout(function () {
     _this.ch.publish(_this.config.exchange_name, _this.config.queue_name, Buffer.from(message_string, 'utf8'));
     R5.out.log(`SEND ${message_object.category}:${message_object.type}`);
     return callback();
-  }, pause_time, this);
+  }, pause_time);
 };
 
 // Private Methods
