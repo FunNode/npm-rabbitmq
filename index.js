@@ -21,7 +21,7 @@ function Rabbitmq (host, user, pass, vhost = 'development') {
 
 // Public Methods
 
-Rabbitmq.prototype.connect = function (config, retry_after_time = 5, callback = function () { }) {
+Rabbitmq.prototype.connect = function (config, retry_after_time = 5, callback = function () {}) {
   let _this = this;
   this.config = config;
 
@@ -89,44 +89,44 @@ function get_message_from_obj (obj) {
 
 function parse_json (str) {
   let obj = null;
-  let counter = 0;
+  let counter = 1;
   let max = 4;
   let initial_string = str;
-  let initial_error;
+  let errors = [];
 
-  while (counter < max && !obj) {
-    try {
-      obj = JSON.parse(str);
-    }
+  while (counter <= max && !obj) {
+    try { obj = JSON.parse(str); }
     catch (e) {
-      if (counter === 0) { initial_error = e; }
+      if (counter === 1) { errors['initial'] = e; }
+      errors['current'] = e;
+      if (counter === 2) {
+        str = str_formatter(/"/g, '\\"', str);
+      }
+      else if (counter === 3) {
+        str = str_formatter(/'/g, '"', str);
+      }
+      catch_logger(counter, max, initial_string, errors)
 
       counter++;
-
-      R5.out.log(`${e} Attempt #${counter} out of ${max}`);
-
-      switch (counter) {
-        case 1:
-          break;
-        case 2:
-          let re = /"/g;
-          str = str.replace(re, '\\"');
-          break;
-        case 3:
-          re = /'/g;
-          str = str.replace(re, '"');
-          break;
-        default:
-          let msg = {
-            text: `Error using JSON.parse on: <br>
-                     <pre>${initial_string}</pre> <br>
-                     This message was sent from rabbitmq.js. Error Message: <br>
-                     <pre>${initial_error.stack}</pre>`
-          };
-          R5.out.error(`${msg.text}`);
-          counter = max;
-      }
     }
   }
   return obj;
+}
+
+function catch_logger (count, max, initial_str, arr_errors) {
+  R5.out.log(`${arr_errors.current} Attempt #${count} out of ${max}`);
+
+  if (count === max) {
+    let msg = {
+      text: `Error using JSON.parse on: <br>
+      <pre>${initial_str}</pre> <br>
+      This message was sent from rabbitmq.js. Error Message: <br>
+      <pre>${arr_errors.initial.stack}</pre>`
+    };
+    R5.out.error(`${msg.text}`);
+  }
+}
+
+function str_formatter (odl_ex, new_ex, text) {
+  return text.replace(odl_ex, new_ex);
 }
