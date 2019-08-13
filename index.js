@@ -128,5 +128,5 @@ function catch_logger (count, max, initial_str, arr_errors) {
 }
 
 function str_formatter (odl_ex, new_ex, text) {
-  return text.replace(odl_ex, new_ex);
+  return text.replace(odl_ex, new_ex, text);
 }
