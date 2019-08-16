@@ -87,8 +87,7 @@ function get_message_from_obj (obj) {
   return JSON.stringify(obj);
 }
 
-// Helper method to determine if JSON is valid prior to parsing
-function json_is_valid(json_str) {
+function json_is_valid (json_str) {
   try {
     return (JSON.parse(json_str) && !!json_str);
   } catch (e) {
@@ -96,17 +95,14 @@ function json_is_valid(json_str) {
   }
 }
 
-// Safely parses JSON and returns object if valid, null if invalid.
-function parse_json(str) {
+function parse_json (str) {
   let parsed_result = null;
 
   if (json_is_valid(str)) {
-    parsed_result = JSON.parse(str) 
-  } else {
-    R5.out.error(
-      `The following JSON is invalid: <br>
-      ${str}
-    `);
+    parsed_result = JSON.parse(str)
+  }
+  else {
+    R5.out.error(`JSON is invalid: ${str}`);
   }
 
   return parsed_result;
