@@ -87,46 +87,27 @@ function get_message_from_obj (obj) {
   return JSON.stringify(obj);
 }
 
-function parse_json (str) {
-  let obj = null;
-  let counter = 1;
-  let max = 4;
-  let initial_string = str;
-  let errors = [];
-
-  while (counter <= max && !obj) {
-    try { obj = JSON.parse(str); }
-    catch (e) {
-      if (counter === 1) { errors['initial'] = e; }
-      errors['current'] = e;
-      if (counter === 2) {
-        str = str_formatter(/"/g, '\\"', str);
-      }
-      else if (counter === 3) {
-        str = str_formatter(/'/g, '"', str);
-      }
-      catch_logger(counter, max, initial_string, errors)
-
-      counter++;
-    }
-  }
-  return obj;
-}
-
-function catch_logger (count, max, initial_str, arr_errors) {
-  R5.out.log(`${arr_errors.current} Attempt #${count} out of ${max}`);
-
-  if (count === max) {
-    let msg = {
-      text: `Error using JSON.parse on: <br>
-      <pre>${initial_str}</pre> <br>
-      This message was sent from rabbitmq.js. Error Message: <br>
-      <pre>${arr_errors.initial.stack}</pre>`
-    };
-    R5.out.error(`${msg.text}`);
+// Helper method to determine if JSON is valid prior to parsing
+function json_is_valid(json_str) {
+  try {
+    return (JSON.parse(json_str) && !!json_str);
+  } catch (e) {
+    return false;
   }
 }
 
-function str_formatter (odl_ex, new_ex, text) {
-  return text.replace(odl_ex, new_ex, text);
+// Safely parses JSON and returns object if valid, null if invalid.
+function parse_json(str) {
+  let parsed_result = null;
+
+  if (json_is_valid(str)) {
+    parsed_result = JSON.parse(str) 
+  } else {
+    R5.out.error(
+      `The following JSON is invalid: <br>
+      ${str}
+    `);
+  }
+
+  return parsed_result;
 }
