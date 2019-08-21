@@ -15,8 +15,14 @@
     "email": "ravi@funnode.com",
     "url": "https://github.com/RaviPatel"
   },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "contributors": [
-    { "name": "Malik Kamran Abid", "url": "https://github.com/orgs/FunNode/people/malikkamranabid" }
+    {
+      "name": "Malik Kamran Abid",
+      "url": "https://github.com/orgs/FunNode/people/malikkamranabid"
+    }
   ],
   "license": "ISC",
   "dependencies": {
