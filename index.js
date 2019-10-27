@@ -50,42 +50,34 @@ Rabbitmq.prototype.connect = function (config, retry_after_time = 5, callback = 
   });
 }
 
-Rabbitmq.prototype.bind = function (callback = function () {}) {
-  let _this = this;
+Rabbitmq.prototype.ack = function (msg) {
+  this.ch.ack(msg);
+}
 
-  _this.ch.assertQueue(_this.config.queue_name, {}, function (err, q) {
-    if (err) { throw new Error(err.message); }
+Rabbitmq.prototype.bind = function (callback) {
+  this.ch.assertQueue(this.config.queue_name, { durable: true });
+  this.ch.prefetch(1);
 
-    R5.out.log(`[*] Waiting for messages from ${_this.config.message_type}. To exit press CTRL+C`);
-    _this.ch.bindQueue(q.queue, _this.config.exchange_name, _this.config.message_type);
-    _this.ch.consume(q.queue, function (msg) {
-      let obj = parse_json(msg.content.toString());
-      if (obj === null) {
-        _this.ch.ack(msg);
-        return;
-      }
-      callback(obj);
-      _this.ch.ack(msg);
-    }, { noAck: false });
-  });
+  R5.out.log(`Waiting for messages from ${this.config.message_type}..`);
+  this.ch.consume(this.config.queue_name, function (msg) {
+    let message = parse_json(msg.content.toString());
+    callback(msg, message);
+  }, { noAck: false });
 };
 
-Rabbitmq.prototype.send = function (message_object, pause_time = 0, callback = function () {}) {
-  let message_string = get_message_from_obj(message_object);
-  let _this = this;
+Rabbitmq.prototype.send = function (message, callback = function () {}) {
+  let message_string = JSON.stringify(message);
 
-  setTimeout(function () {
-    _this.ch.publish(_this.config.exchange_name, _this.config.queue_name, Buffer.from(message_string, 'utf8'));
-    R5.out.log(`SEND ${message_object.category}:${message_object.type}`);
-    return callback();
-  }, pause_time);
+  this.ch.assertQueue(this.config.queue_name, { durable: true });
+  this.ch.sendToQueue(this.config.queue_name, Buffer.from(message_string, 'utf8'), {
+    persistent: true
+  });
+
+  R5.out.log(`SEND ${message.category}:${message.type}`);
+  return callback();
 };
 
 // Private Methods
-
-function get_message_from_obj (obj) {
-  return JSON.stringify(obj);
-}
 
 function json_is_valid (json_str) {
   try {
