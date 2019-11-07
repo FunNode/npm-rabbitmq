@@ -6,7 +6,6 @@ var expect = chai.expect;
 
 describe('Index', () => {
   describe('', () => {
-
     it('', done => {
       expect(null).to.be.a('null');
       done();
