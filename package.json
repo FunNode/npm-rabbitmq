@@ -4,7 +4,7 @@
   "description": "A rabbitmq wrapper used by funnode repositories",
   "main": "index.js",
   "scripts": {
-    "test:dev": "./node_modules/.bin/mocha test/*.js --timeout 2000 --exit",
+    "test:dev": "./node_modules/.bin/mocha test/*.js --watch --timeout 2000 --exit",
     "test": "./node_modules/.bin/mocha test/*.js --timeout 2000 --exit",
     "coverage": "./node_modules/.bin/nyc --reporter=lcov --reporter=text-lcov --report-dir=coverage --all npm run test",
     "lint": "eslint index.js test"
