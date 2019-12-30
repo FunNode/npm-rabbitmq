@@ -70,7 +70,7 @@ Rabbitmq.prototype = {
     await this.ch.assertQueue(this.config.queue_name, { durable: true });
     await this.ch.prefetch(1);
 
-    R5.out.log(`Waiting for messages from ${this.config.message_type}..`);
+    R5.out.log(`Waiting for messages from #${this.config.queue_name}..`);
     await this.ch.consume(this.config.queue_name, function (msg) {
       let message = parse_json(msg.content.toString());
       return callback(msg, message);
