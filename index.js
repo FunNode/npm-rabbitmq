@@ -61,7 +61,7 @@ Rabbitmq.prototype = {
     await this.conn.close();
   },
 
-  ack: function (msg, message) {
+  ack: function (msg, message = {}) {
     this.ch.ack(msg);
     R5.out.log(`RabbitMQ ACKD ${message_summary(message)}`);
   },
