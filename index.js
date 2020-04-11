@@ -89,7 +89,7 @@ Rabbitmq.prototype = {
   },
 
   send: async function (message) {
-    R5.out.log(`RabbitMQ SEND ${message.category}:${message.type}`);
+    R5.out.log(`RabbitMQ SEND ${message_summary(message)}`);
 
     let message_string = JSON.stringify(message);
     await this.ch.assertQueue(this.config.queue_name, { durable: true });
@@ -97,7 +97,7 @@ Rabbitmq.prototype = {
       persistent: true
     });
 
-    R5.out.log(`RabbitMQ SENT ${message.category}:${message.type}`);
+    R5.out.log(`RabbitMQ SENT ${message_summary(message)}`);
   },
 };
 
@@ -117,16 +117,20 @@ function parse_json (str) {
 
   if (json_is_valid(str)) {
     message = JSON.parse(str);
-    let summary = `${message.game ? `${message.game}:` : ''}:${message.category}:`;
-    summary += `${message.category === 'match' ? `${message.match.id}:` : ''}:`;
-    summary += message.type;
-    R5.out.log(`RECV ${summary}:${message.type}`);
+    R5.out.log(`RabbitMQ RECV ${message_summary(message)}`);
   }
   else {
     R5.out.error(`RabbitMQ JSON is invalid: ${str}`);
   }
 
   return message;
+}
+
+function message_summary (message) {
+  let summary = `${message.game ? `${message.game}:` : ''}:${message.category}:`;
+  summary += `${message.category === 'match' ? `${message.match.id}:` : ''}:`;
+  summary += message.type;
+  return summary;
 }
 
 function delay (ms) {
