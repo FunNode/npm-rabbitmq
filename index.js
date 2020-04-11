@@ -113,16 +113,20 @@ function json_is_valid (json_str) {
 }
 
 function parse_json (str) {
-  let parsed_result = null;
+  let message = null;
 
   if (json_is_valid(str)) {
-    parsed_result = JSON.parse(str);
+    message = JSON.parse(str);
+    let summary = `${message.game ? `${message.game}:` : ''}:${message.category}:`;
+    summary += `${message.category === 'match' ? `${message.match.id}:` : ''}:`;
+    summary += message.type;
+    R5.out.log(`RECV ${summary}:${message.type}`);
   }
   else {
     R5.out.error(`RabbitMQ JSON is invalid: ${str}`);
   }
 
-  return parsed_result;
+  return message;
 }
 
 function delay (ms) {
