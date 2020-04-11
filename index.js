@@ -89,8 +89,6 @@ Rabbitmq.prototype = {
   },
 
   send: async function (message) {
-    R5.out.log(`RabbitMQ SEND ${message_summary(message)}`);
-
     let message_string = JSON.stringify(message);
     await this.ch.assertQueue(this.config.queue_name, { durable: true });
     await this.ch.sendToQueue(this.config.queue_name, Buffer.from(message_string, 'utf8'), {
@@ -98,7 +96,7 @@ Rabbitmq.prototype = {
     });
 
     R5.out.log(`RabbitMQ SENT ${message_summary(message)}`);
-  },
+  }
 };
 
 // Private Methods
@@ -136,6 +134,7 @@ function message_summary (message) {
     summary += `${message.category === 'match' ? `${message.match.id}:` : ''}:`;
   }
   summary += message.type;
+  summary += message.user && message.user.name ? `:${message.user.name}` : '';
   return summary;
 }
 
