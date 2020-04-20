@@ -1,6 +1,6 @@
 {
   "name": "@funnode/rabbitmq",
-  "version": "2.0.10",
+  "version": "2.0.11",
   "description": "A rabbitmq wrapper used by funnode repositories",
   "main": "index.js",
   "scripts": {
