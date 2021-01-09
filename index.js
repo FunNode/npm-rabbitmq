@@ -132,7 +132,7 @@ function message_summary (message) {
   }
   else if (message.match) {
     summary = `${message.match.settings ? `${message.match.settings.game}:` : ''}`;
-    summary += ['match', 'room'].indexOf(message.category) >= 0 ? `${message.match.id}:` : `${message.category}:`;
+    summary += message.category === 'match' ? `${message.match.id}:` : `${message.category}:`;
   }
   summary += message.type;
   summary += message.user && message.user.name ? `:${message.user.name}` : '';
