@@ -42,7 +42,7 @@ Rabbitmq.prototype = {
     }
     this.ch = await this.conn.createChannel();
     await this.ch.assertExchange(config.exchange_name, 'topic', { durable: false });
-    R5.out.log(`RabbitMQ connected to ${config.queue_name}`);
+    R5.out.log(`RabbitMQ connected to ${this.host}:${config.queue_name}`);
     for (const consumer of this.consumers) {
       await this.bind(consumer, true);
     }
