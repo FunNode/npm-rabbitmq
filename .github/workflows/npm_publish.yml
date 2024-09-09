@@ -10,12 +10,12 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
         with:
-          node-version: 12
+          node-version: 16
       - run: npm ci
       - run: npm run test
       - uses: paambaati/codeclimate-action@v2.3.0
@@ -25,15 +25,21 @@ jobs:
           coverageCommand: npm run coverage
   publish-gpr:
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: 12
+          node-version: 16
           registry-url: https://npm.pkg.github.com/
           scope: '@RaviPatel'
       - run: npm ci
+      - run: |
+          echo "@username:registry=https://npm.pkg.github.com" >> .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GPR_PERSONAL_TOKEN }}" >> .npmrc
       - run: npm publish
         env:
-          NODE_AUTH_TOKEN: ${{secrets.gpr_personal_token}}
+          NODE_AUTH_TOKEN: ${{secrets.GPR_PERSONAL_TOKEN}}
