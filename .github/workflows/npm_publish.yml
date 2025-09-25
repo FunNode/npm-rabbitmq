@@ -19,6 +19,8 @@ jobs:
       - run: npm ci
       - run: npm run test
       - uses: paambaati/codeclimate-action@v2.3.0
+      # TODO: enable this when codeclimate is fixed
+        if: false
         env:
           CC_TEST_REPORTER_ID: ${{secrets.cc_reporter_id}}
         with:
