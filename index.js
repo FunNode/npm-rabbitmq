@@ -20,6 +20,7 @@ function Rabbitmq (host, user, pass, vhost = 'development') {
   this.connect_retries = 0;
   this.error_timeout = 10000;
   this.consumers = [];
+  this._delayed_ready = false;
 }
 
 // Public Methods
@@ -85,18 +86,46 @@ Rabbitmq.prototype = {
     await this.ch.assertQueue(this.config.queue_name, { durable: true });
     const msg = await this.ch.get(this.config.queue_name, { noAck: false });
     let message;
-    if (msg) { message = parse_json(msg.content.toString()); }
+    if (msg) {
+      message = parse_json(msg.content.toString());
+    }
     return { msg, message };
   },
 
-  send: async function (message) {
+  send: async function (message, options = {}) {
     let message_string = JSON.stringify(message);
     await this.ch.assertQueue(this.config.queue_name, { durable: true });
-    await this.ch.sendToQueue(this.config.queue_name, Buffer.from(message_string, 'utf8'), {
-      persistent: true
-    });
+
+    const delayMs = Number(options.delayMs) || 0;
+    const headers = Object.assign({}, options.headers || {});
+
+    if (delayMs > 0) {
+      try {
+        await this._ensure_delayed_exchange();
+        // Route by queue_name as routing key (direct)
+        await this.ch.bindQueue(this.config.queue_name, this._delayed_exchange_name, this.config.queue_name);
+        headers['x-delay'] = delayMs;
+        this.ch.publish(
+          this._delayed_exchange_name,
+          this.config.queue_name,
+          Buffer.from(message_string, 'utf8'),
+          { persistent: true, headers }
+        );
+      }
+ catch (err) {
+        R5.out.error(`RabbitMQ delayed publish failed, sending immediately: ${err.message}`);
+        await this.ch.sendToQueue(this.config.queue_name, Buffer.from(message_string, 'utf8'), { persistent: true, headers });
+      }
+    }
+ else {
+      await this.ch.sendToQueue(this.config.queue_name, Buffer.from(message_string, 'utf8'), { persistent: true, headers });
+    }
 
     R5.out.log(`RabbitMQ SENT ${message_summary(message)}`);
+  },
+
+  sendDelayed: async function (message, delayMs, headers = {}) {
+    return this.send(message, { delayMs, headers });
   }
 };
 
@@ -142,3 +171,17 @@ function message_summary (message) {
 function delay (ms) {
   return new Promise((res) => setTimeout(res, ms));
 }
+
+Rabbitmq.prototype._ensure_delayed_exchange = async function () {
+  if (this._delayed_ready) {
+    return;
+  }
+  // Use a dedicated delayed exchange per logical exchange
+  this._delayed_exchange_name = `${this.config.exchange_name}.delayed`;
+  // x-delayed-message requires the plugin; declare defensively
+  await this.ch.assertExchange(this._delayed_exchange_name, 'x-delayed-message', {
+    durable: true,
+    arguments: { 'x-delayed-type': 'direct' }
+  });
+  this._delayed_ready = true;
+};

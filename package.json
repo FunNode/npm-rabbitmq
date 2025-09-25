@@ -1,7 +1,7 @@
 {
   "name": "@funnode/rabbitmq",
-  "version": "3.0.0",
-  "description": "A rabbitmq wrapper used by funnode repositories",
+  "version": "3.1.0",
+  "description": "A rabbitmq wrapper with delayed message delivery support for funnode repositories",
   "main": "index.js",
   "scripts": {
     "test:dev": "./node_modules/.bin/mocha test/*.js --watch --timeout 2000 --exit",

@@ -37,7 +37,7 @@ describe('Rabbitmq', function () {
   let amqplib;
   let Rabbitmq;
   let rabbitmq;
-  
+
   async function inject () {
     amqplib = { connect };
     Rabbitmq = proxyquire('../index', {
@@ -45,7 +45,7 @@ describe('Rabbitmq', function () {
     });
     rabbitmq = new Rabbitmq(host, user, pass, vhost);
   }
-  
+
   beforeEach(async function () {
     sandbox = sinon.createSandbox();
     message = { message: 'message' };
@@ -70,6 +70,8 @@ describe('Rabbitmq', function () {
       get,
       ack,
       sendToQueue,
+      publish: sandbox.stub(),
+      bindQueue: sandbox.stub().resolves(),
       closeConnection,
     });
     connect = sandbox.stub().resolves({
@@ -195,7 +197,7 @@ describe('Rabbitmq', function () {
     await callback(msg);
     expect(consumer).to.have.been.calledWith(msg, message);
   });
-  
+
   it('gets', async function () {
     await rabbitmq.connect(config);
     return expect(rabbitmq.get()).to.become({ msg, message });
@@ -247,10 +249,47 @@ describe('Rabbitmq', function () {
     await rabbitmq.connect(config);
     return expect(rabbitmq.get()).to.become({ msg: invalidMsg, message: null });
   });
-  
+
   it('sends', async function () {
     await rabbitmq.connect(config);
     await rabbitmq.send(message);
     expect(sendToQueue).to.have.been.calledOnce;
+  });
+
+  describe('delayed delivery', function () {
+    it('sends immediate message when delayMs is 0', async function () {
+      await rabbitmq.connect(config);
+      await rabbitmq.send(message, { delayMs: 0 });
+
+      expect(sendToQueue).to.have.been.calledWith(
+        config.queue_name,
+        Buffer.from(JSON.stringify(message), 'utf8'),
+        { persistent: true, headers: {} }
+      );
+    });
+
+    it('sends immediate message when delayMs is negative', async function () {
+      await rabbitmq.connect(config);
+      await rabbitmq.send(message, { delayMs: -1000 });
+
+      expect(sendToQueue).to.have.been.calledWith(
+        config.queue_name,
+        Buffer.from(JSON.stringify(message), 'utf8'),
+        { persistent: true, headers: {} }
+      );
+    });
+
+    it('falls back to immediate send when delayed exchange fails', async function () {
+      // Make assertExchange fail for delayed exchange calls
+      assertExchange.onCall(1).rejects(new Error('Plugin not available'));
+      await rabbitmq.connect(config);
+      await rabbitmq.sendDelayed(message, 2000);
+
+      expect(sendToQueue).to.have.been.calledWith(
+        config.queue_name,
+        Buffer.from(JSON.stringify(message), 'utf8'),
+        { persistent: true, headers: {} }
+      );
+    });
   });
 });
