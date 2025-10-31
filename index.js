@@ -121,7 +121,8 @@ Rabbitmq.prototype = {
       await this.ch.sendToQueue(this.config.queue_name, Buffer.from(message_string, 'utf8'), { persistent: true, headers });
     }
 
-    R5.out.log(`RabbitMQ SENT ${message_summary(message)}`);
+    const delay_suffix = delayMs > 0 ? ` (delayed ${delayMs}ms)` : '';
+    R5.out.log(`RabbitMQ SENT ${message_summary(message)}${delay_suffix}`);
   },
 
   sendDelayed: async function (message, delayMs, headers = {}) {
