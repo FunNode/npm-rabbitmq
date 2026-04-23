@@ -19,7 +19,8 @@ function Rabbitmq (host, user, pass, vhost = 'development') {
   this.vhost = vhost;
   this.connect_retries = 0;
   this.error_timeout = 10000;
-  this.consumers = [];
+  this.queue_consumers = [];
+  this.broadcast_consumers = [];
   this._delayed_ready = false;
 }
 
@@ -42,10 +43,13 @@ Rabbitmq.prototype = {
       throw err;
     }
     this.ch = await this.conn.createChannel();
-    await this.ch.assertExchange(config.exchange_name, 'topic', { durable: false });
-    R5.out.log(`RabbitMQ connected to ${this.host}:${config.queue_name}`);
-    for (const consumer of this.consumers) {
+    await this.ch.assertExchange(config.exchange_name, config.exchange_type || 'topic', { durable: false });
+    R5.out.log(`RabbitMQ connected to ${this.host}:${config.queue_name || config.exchange_name}`);
+    for (const consumer of this.queue_consumers) {
       await this.bind(consumer, true);
+    }
+    for (const callback of this.broadcast_consumers) {
+      await this._bind_broadcast(callback, true);
     }
     this.connect_retries = 0;
     const _this = this;
@@ -78,7 +82,7 @@ Rabbitmq.prototype = {
       return callback(msg, message);
     }, { noAck: false });
     if (!reconnecting) {
-      this.consumers.push(callback);
+      this.queue_consumers.push(callback);
     }
   },
 
@@ -127,6 +131,31 @@ Rabbitmq.prototype = {
 
   sendDelayed: async function (message, delayMs, headers = {}) {
     return this.send(message, { delayMs, headers });
+  },
+
+  on_broadcast: async function (callback) {
+    await this._bind_broadcast(callback);
+    R5.out.log(`RabbitMQ subscribed to broadcasts on ${this.config.exchange_name}`);
+  },
+
+  broadcast: async function (message) {
+    const message_string = JSON.stringify(message);
+    await this.ch.assertExchange(this.config.exchange_name, 'fanout', { durable: false });
+    this.ch.publish(this.config.exchange_name, '', Buffer.from(message_string, 'utf8'));
+    R5.out.log(`RabbitMQ BROADCAST ${this.config.exchange_name}:${message.type}`);
+  },
+
+  _bind_broadcast: async function (callback, reconnecting = false) {
+    await this.ch.assertExchange(this.config.exchange_name, 'fanout', { durable: false });
+    const q = await this.ch.assertQueue('', { exclusive: true, autoDelete: true });
+    await this.ch.bindQueue(q.queue, this.config.exchange_name, '');
+    await this.ch.consume(q.queue, function (msg) {
+      const message = parse_json(msg.content.toString());
+      return callback(msg, message);
+    }, { noAck: false });
+    if (!reconnecting) {
+      this.broadcast_consumers.push(callback);
+    }
   }
 };
 
