@@ -27,6 +27,7 @@ jobs:
           coverageCommand: npm run coverage
   publish-gpr:
     needs: build
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -42,6 +43,9 @@ jobs:
       - run: |
           echo "@username:registry=https://npm.pkg.github.com" >> .npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GPR_PERSONAL_TOKEN }}" >> .npmrc
-      - run: npm publish
+      - run: |
+          PUBLISHED=$(npm view $(node -p "require('./package.json').name") version 2>/dev/null || echo "0.0.0")
+          CURRENT=$(node -p "require('./package.json').version")
+          if [ "$PUBLISHED" != "$CURRENT" ]; then npm publish; else echo "Version $CURRENT already published, skipping."; fi
         env:
           NODE_AUTH_TOKEN: ${{secrets.GPR_PERSONAL_TOKEN}}
