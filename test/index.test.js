@@ -187,7 +187,7 @@ describe('Rabbitmq', function () {
     const errorCallback = on.args[0][1];
     await errorCallback({});
     expect(consume).to.have.been.calledTwice;
-    expect(rabbitmq.consumers.length).to.eql(1);
+    expect(rabbitmq.queue_consumers.length).to.eql(1);
   });
 
   it('parses msg before calling consumer', async function () {
