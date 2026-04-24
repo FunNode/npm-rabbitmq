@@ -147,7 +147,7 @@ Rabbitmq.prototype = {
 
   _bind_broadcast: async function (callback, reconnecting = false) {
     await this.ch.assertExchange(this.config.exchange_name, 'fanout', { durable: false });
-    const q = await this.ch.assertQueue('', { exclusive: true, autoDelete: true });
+    const q = await this.ch.assertQueue(this.config.broadcast_queue_name || '', { exclusive: true, autoDelete: true });
     await this.ch.bindQueue(q.queue, this.config.exchange_name, '');
     await this.ch.consume(q.queue, function (msg) {
       const message = parse_json(msg.content.toString());
