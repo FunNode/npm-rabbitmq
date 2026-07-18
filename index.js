@@ -44,6 +44,7 @@ Rabbitmq.prototype = {
     }
     this.ch = await this.conn.createChannel();
     await this.ch.assertExchange(config.exchange_name, config.exchange_type || 'topic', { durable: false });
+    await this._ensure_dead_letter_queue();
     R5.out.log(`RabbitMQ connected to ${this.host}:${config.queue_name || config.exchange_name}`);
     for (const consumer of this.queue_consumers) {
       await this.bind(consumer, true);
@@ -73,7 +74,7 @@ Rabbitmq.prototype = {
 
   // eslint-disable-next-line no-unused-vars
   bind: async function (callback = async (msg, message) => {}, reconnecting = false) {
-    await this.ch.assertQueue(this.config.queue_name, { durable: true });
+    await this.ch.assertQueue(this.config.queue_name, this._queue_options());
     await this.ch.prefetch(1);
 
     R5.out.log(`RabbitMQ waiting for messages from #${this.config.queue_name}..`);
@@ -87,7 +88,7 @@ Rabbitmq.prototype = {
   },
 
   get: async function () {
-    await this.ch.assertQueue(this.config.queue_name, { durable: true });
+    await this.ch.assertQueue(this.config.queue_name, this._queue_options());
     const msg = await this.ch.get(this.config.queue_name, { noAck: false });
     let message;
     if (msg) {
@@ -98,7 +99,7 @@ Rabbitmq.prototype = {
 
   send: async function (message, options = {}) {
     let message_string = JSON.stringify(message);
-    await this.ch.assertQueue(this.config.queue_name, { durable: true });
+    await this.ch.assertQueue(this.config.queue_name, this._queue_options());
 
     const delayMs = Number(options.delayMs) || 0;
     const headers = Object.assign({}, options.headers || {});
@@ -201,6 +202,28 @@ function message_summary (message) {
 function delay (ms) {
   return new Promise((res) => setTimeout(res, ms));
 }
+
+Rabbitmq.prototype._queue_options = function () {
+  return this._dlx_name
+    ? { durable: true, arguments: { 'x-dead-letter-exchange': this._dlx_name } }
+    : { durable: true };
+};
+
+// Routes messages here after they're nacked/rejected without requeue, or expire -
+// otherwise a poison message just crash-loops the consumer pod forever (redelivered
+// on every reconnect) with no way to inspect or discard it. No queue_name means this
+// instance is broadcast-only (see platform_exchange), so there's no queue to protect.
+Rabbitmq.prototype._ensure_dead_letter_queue = async function () {
+  if (!this.config.queue_name || this._dead_letter_ready) {
+    return;
+  }
+  this._dlx_name = `${this.config.queue_name}.dlx`;
+  const dead_letter_queue_name = `${this.config.queue_name}.dlq`;
+  await this.ch.assertExchange(this._dlx_name, 'fanout', { durable: true });
+  await this.ch.assertQueue(dead_letter_queue_name, { durable: true });
+  await this.ch.bindQueue(dead_letter_queue_name, this._dlx_name, '');
+  this._dead_letter_ready = true;
+};
 
 Rabbitmq.prototype._ensure_delayed_exchange = async function () {
   if (this._delayed_ready) {
