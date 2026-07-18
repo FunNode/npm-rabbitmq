@@ -30,6 +30,7 @@ describe('Rabbitmq', function () {
   let get;
   let ack;
   let sendToQueue;
+  let bindQueue;
   let closeConnection;
   let createChannel;
   let on;
@@ -59,6 +60,7 @@ describe('Rabbitmq', function () {
     get = sandbox.stub().resolves(msg);
     ack = sandbox.stub();
     sendToQueue = sandbox.stub().resolves();
+    bindQueue = sandbox.stub().resolves();
     closeConnection = sandbox.stub().resolves();
     on = sandbox.stub();
     createChannel = sandbox.stub().resolves({
@@ -71,7 +73,7 @@ describe('Rabbitmq', function () {
       ack,
       sendToQueue,
       publish: sandbox.stub(),
-      bindQueue: sandbox.stub().resolves(),
+      bindQueue,
       closeConnection,
     });
     connect = sandbox.stub().resolves({
@@ -214,6 +216,7 @@ describe('Rabbitmq', function () {
       get,
       ack,
       sendToQueue,
+      bindQueue,
       closeConnection
     });
     connect = sandbox.stub().resolves({
@@ -238,6 +241,7 @@ describe('Rabbitmq', function () {
       get,
       ack,
       sendToQueue,
+      bindQueue,
       closeConnection
     });
     connect = sandbox.stub().resolves({
@@ -254,6 +258,58 @@ describe('Rabbitmq', function () {
     await rabbitmq.connect(config);
     await rabbitmq.send(message);
     expect(sendToQueue).to.have.been.calledOnce;
+  });
+
+  describe('dead letter queue', function () {
+    it('declares a dead-letter exchange and queue, bound together, on connect', async function () {
+      await rabbitmq.connect(config);
+
+      expect(assertExchange).to.have.been.calledWith(`${config.queue_name}.dlx`, 'fanout', { durable: true });
+      expect(assertQueue).to.have.been.calledWith(`${config.queue_name}.dlq`, { durable: true });
+      expect(bindQueue).to.have.been.calledWith(`${config.queue_name}.dlq`, `${config.queue_name}.dlx`, '');
+    });
+
+    it('declares the primary queue with the dead-letter-exchange argument', async function () {
+      await rabbitmq.connect(config);
+      await rabbitmq.bind(consumer);
+
+      expect(assertQueue).to.have.been.calledWith(config.queue_name, {
+        durable: true,
+        arguments: { 'x-dead-letter-exchange': `${config.queue_name}.dlx` }
+      });
+    });
+
+    it('applies the same dead-letter arguments on get() and send() as on bind()', async function () {
+      await rabbitmq.connect(config);
+      await rabbitmq.get();
+      await rabbitmq.send(message);
+
+      const expected_options = {
+        durable: true,
+        arguments: { 'x-dead-letter-exchange': `${config.queue_name}.dlx` }
+      };
+      expect(assertQueue).to.have.been.calledWith(config.queue_name, expected_options);
+      expect(assertQueue.callCount).to.be.greaterThan(1);
+      assertQueue.getCalls()
+        .filter((call) => call.args[0] === config.queue_name)
+        .forEach((call) => expect(call.args[1]).to.eql(expected_options));
+    });
+
+    it('skips dead-letter setup for broadcast-only config without a queue_name', async function () {
+      const broadcast_config = { exchange_name: 'platform_exchange', exchange_type: 'fanout' };
+      await rabbitmq.connect(broadcast_config);
+
+      expect(assertExchange).to.not.have.been.calledWith(sinon.match(/\.dlx$/));
+      expect(assertQueue).to.not.have.been.calledWith(sinon.match(/\.dlq$/));
+    });
+
+    it('only declares the dead-letter exchange once across a reconnect', async function () {
+      await rabbitmq.connect(config);
+      const errorCallback = on.args[0][1];
+      await errorCallback({});
+
+      expect(assertExchange.withArgs(`${config.queue_name}.dlx`).callCount).to.eql(1);
+    });
   });
 
   describe('delayed delivery', function () {
@@ -280,8 +336,9 @@ describe('Rabbitmq', function () {
     });
 
     it('falls back to immediate send when delayed exchange fails', async function () {
-      // Make assertExchange fail for delayed exchange calls
-      assertExchange.onCall(1).rejects(new Error('Plugin not available'));
+      // assertExchange call order: 0 = main exchange, 1 = dead-letter exchange
+      // (both in connect()), 2 = delayed exchange (in sendDelayed). Make that one fail.
+      assertExchange.onCall(2).rejects(new Error('Plugin not available'));
       await rabbitmq.connect(config);
       await rabbitmq.sendDelayed(message, 2000);
 
