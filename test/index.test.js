@@ -34,6 +34,7 @@ describe('Rabbitmq', function () {
   let closeConnection;
   let createChannel;
   let on;
+  let channelOn;
   let connect;
   let amqplib;
   let Rabbitmq;
@@ -63,6 +64,7 @@ describe('Rabbitmq', function () {
     bindQueue = sandbox.stub().resolves();
     closeConnection = sandbox.stub().resolves();
     on = sandbox.stub();
+    channelOn = sandbox.stub();
     createChannel = sandbox.stub().resolves({
       close: closeChannel,
       assertExchange,
@@ -75,6 +77,7 @@ describe('Rabbitmq', function () {
       publish: sandbox.stub(),
       bindQueue,
       closeConnection,
+      on: channelOn,
     });
     connect = sandbox.stub().resolves({
       close: closeConnection,
@@ -155,6 +158,26 @@ describe('Rabbitmq', function () {
     expect(connect).to.have.been.calledOnce;
   });
 
+  describe('error handling', function () {
+    it('does not throw on connection error', async function () {
+      await rabbitmq.connect(config);
+      const errorHandler = on.args[1][1];
+      expect(() => errorHandler(new Error('boom'))).to.not.throw();
+    });
+
+    it('does not throw on channel error', async function () {
+      await rabbitmq.connect(config);
+      const errorHandler = channelOn.args[0][1];
+      expect(() => errorHandler(new Error('boom'))).to.not.throw();
+    });
+
+    it('does not throw on channel close', async function () {
+      await rabbitmq.connect(config);
+      const closeHandler = channelOn.args[1][1];
+      expect(() => closeHandler()).to.not.throw();
+    });
+  });
+
   it('disconnects', async function () {
     await rabbitmq.connect(config);
     await rabbitmq.disconnect();
@@ -217,7 +240,8 @@ describe('Rabbitmq', function () {
       ack,
       sendToQueue,
       bindQueue,
-      closeConnection
+      closeConnection,
+      on: channelOn,
     });
     connect = sandbox.stub().resolves({
       close: closeConnection,
@@ -242,7 +266,8 @@ describe('Rabbitmq', function () {
       ack,
       sendToQueue,
       bindQueue,
-      closeConnection
+      closeConnection,
+      on: channelOn,
     });
     connect = sandbox.stub().resolves({
       close: closeConnection,
