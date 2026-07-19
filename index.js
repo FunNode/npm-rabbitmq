@@ -43,6 +43,12 @@ Rabbitmq.prototype = {
       throw err;
     }
     this.ch = await this.conn.createChannel();
+    this.ch.on('error', function (err) {
+      R5.out.error(`RabbitMQ channel error: ${err}`);
+    });
+    this.ch.on('close', function () {
+      R5.out.log(`RabbitMQ channel closed`);
+    });
     await this.ch.assertExchange(config.exchange_name, config.exchange_type || 'topic', { durable: false });
     await this._ensure_dead_letter_queue();
     R5.out.log(`RabbitMQ connected to ${this.host}:${config.queue_name || config.exchange_name}`);
@@ -59,6 +65,9 @@ Rabbitmq.prototype = {
         R5.out.error(`RabbitMQ reconnecting on close`);
         return _this.connect(config);
       }
+    });
+    this.conn.on('error', function (err) {
+      R5.out.error(`RabbitMQ connection error: ${err}`);
     });
   },
 
