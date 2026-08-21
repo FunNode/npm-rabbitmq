@@ -104,6 +104,15 @@ try {
 }
 ```
 
+### Debug Logging
+
+`RECV`/`ACKD`/`SENT`/`BROADCAST` per-message tracing is off by default (it scales with
+message volume and can flood a consumer's logs). Set `RABBITMQ_DEBUG=true` to enable it:
+
+```bash
+RABBITMQ_DEBUG=true node app.js
+```
+
 ## API Reference
 
 ### Constructor
