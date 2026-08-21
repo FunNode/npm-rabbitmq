@@ -10,6 +10,12 @@ if (!global.R5) {
 
 const amqp = require('amqplib');
 
+// Off by default: RECV/ACKD/SENT/BROADCAST fire on every message, so left on they
+// scale with traffic and can fill a pod's disk (container stdout counts against
+// Kubernetes' ephemeral-storage limit) over a multi-day pod lifetime. Set
+// RABBITMQ_DEBUG=true to trace message flow while debugging.
+const DEBUG_MESSAGES = process.env.RABBITMQ_DEBUG === 'true';
+
 // Constructors
 
 function Rabbitmq (host, user, pass, vhost = 'development') {
@@ -78,7 +84,9 @@ Rabbitmq.prototype = {
 
   ack: function (msg, message = {}) {
     this.ch.ack(msg);
-    R5.out.log(`RabbitMQ ACKD ${message_summary(message)}`);
+    if (DEBUG_MESSAGES) {
+      R5.out.log(`RabbitMQ ACKD ${message_summary(message)}`);
+    }
   },
 
   // eslint-disable-next-line no-unused-vars
@@ -136,7 +144,9 @@ Rabbitmq.prototype = {
     }
 
     const delay_suffix = delayMs > 0 ? ` (delayed ${delayMs}ms)` : '';
-    R5.out.log(`RabbitMQ SENT ${message_summary(message)}${delay_suffix}`);
+    if (DEBUG_MESSAGES) {
+      R5.out.log(`RabbitMQ SENT ${message_summary(message)}${delay_suffix}`);
+    }
   },
 
   sendDelayed: async function (message, delayMs, headers = {}) {
@@ -152,7 +162,9 @@ Rabbitmq.prototype = {
     const message_string = JSON.stringify(message);
     await this.ch.assertExchange(this.config.exchange_name, 'fanout', { durable: false });
     this.ch.publish(this.config.exchange_name, '', Buffer.from(message_string, 'utf8'));
-    R5.out.log(`RabbitMQ BROADCAST ${this.config.exchange_name}:${message.type}`);
+    if (DEBUG_MESSAGES) {
+      R5.out.log(`RabbitMQ BROADCAST ${this.config.exchange_name}:${message.type}`);
+    }
   },
 
   _bind_broadcast: async function (callback, reconnecting = false) {
@@ -185,7 +197,9 @@ function parse_json (str) {
 
   if (json_is_valid(str)) {
     message = JSON.parse(str);
-    R5.out.log(`RabbitMQ RECV ${message_summary(message)}`);
+    if (DEBUG_MESSAGES) {
+      R5.out.log(`RabbitMQ RECV ${message_summary(message)}`);
+    }
   }
   else {
     R5.out.error(`RabbitMQ JSON is invalid: ${str}`);
