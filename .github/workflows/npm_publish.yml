@@ -17,14 +17,16 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - run: npm run test
-      - uses: paambaati/codeclimate-action@v2.3.0
-      # TODO: enable this when codeclimate is fixed
-        if: false
-        env:
-          CC_TEST_REPORTER_ID: ${{secrets.cc_reporter_id}}
+      - run: npm run coverage
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
         with:
-          coverageCommand: npm run coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: coverage/lcov.info
+          flags: npm-rabbitmq-tests
+          name: codecov-npm-rabbitmq
+          fail_ci_if_error: false
+          verbose: true
   publish-gpr:
     needs: build
     if: github.event_name == 'push'
