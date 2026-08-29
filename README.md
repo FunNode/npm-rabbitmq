@@ -3,6 +3,7 @@
 [![Maintainability](https://api.codeclimate.com/v1/badges/bb0ede39e5bbf0862934/maintainability)](https://codeclimate.com/github/FunNode/npm-rabbitmq/maintainability)
 ![npm package](https://github.com/FunNode/npm-rabbitmq/workflows/npm%20package/badge.svg)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/bb0ede39e5bbf0862934/test_coverage)](https://codeclimate.com/github/FunNode/npm-rabbitmq/test_coverage)
+[![codecov](https://codecov.io/gh/FunNode/npm-rabbitmq/graph/badge.svg)](https://codecov.io/gh/FunNode/npm-rabbitmq)
 
 A RabbitMQ wrapper used by FunNode repositories with support for delayed message delivery.
 
